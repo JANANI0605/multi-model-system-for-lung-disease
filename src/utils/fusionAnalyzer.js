@@ -109,7 +109,7 @@ export function analyzeCustomPatientData({ demographics, textData, labData, xray
   }
 
   return {
-    id: `PAT-CUST-${Math.floor(1000 + Math.random() * 9000)}`,
+    id: demographics.id || `PAT-CUST-${Math.floor(1000 + Math.random() * 9000)}`,
     name: demographics.name || 'Anonymous Patient',
     age: demographics.age || 45,
     gender: demographics.gender || 'Unspecified',
@@ -148,7 +148,7 @@ export function analyzeCustomPatientData({ demographics, textData, labData, xray
     fusionResults: {
       modalityContributions: [
         { name: "Chest X-Ray Vision", weight: normVision, color: "#3b82f6" },
-        { name: "Clinical NLP Text", weight: normText, color: "#8b5cf6" },
+        { name: "Clinical Symptom Text", weight: normText, color: "#8b5cf6" },
         { name: "Lab & Vitals Biomarkers", weight: normLab, color: "#06b6d4" }
       ],
       diseasePredictions: [

@@ -3,10 +3,10 @@ import { Upload, FileText, Activity, Image as ImageIcon, Sparkles, CheckCircle, 
 import { parseUploadedLabReport, parseSymptomsText } from '../utils/labReportParser';
 
 export default function UploadWorkspace({ onRunFusion, currentDataset }) {
-  // Input states for the 3 uploaded modalities
-  const [patientName, setPatientName] = useState('Patient-2026-X1');
-  const [patientAge, setPatientAge] = useState(58);
-  const [patientGender, setPatientGender] = useState('Male');
+  // Input states for the 3 uploaded modalities linked to logged-in patient
+  const [patientName, setPatientName] = useState(currentDataset?.name || '');
+  const [patientAge, setPatientAge] = useState(currentDataset?.age || 35);
+  const [patientGender, setPatientGender] = useState(currentDataset?.gender || 'Female');
 
   // Modality 1: Symptoms Text
   const [symptomsText, setSymptomsText] = useState('');
@@ -54,58 +54,6 @@ export default function UploadWorkspace({ onRunFusion, currentDataset }) {
     reader.readAsDataURL(file);
   };
 
-  const loadPresetSample = (type) => {
-    if (type === 'Pneumonia') {
-      setPatientName('Eleanor Vance');
-      setPatientAge(68);
-      setPatientGender('Male');
-      setSymptomsText('Patient presents with 4 days of high fever (39.1°C), productive cough with rust-colored purulent sputum, right-sided pleuritic chest pain, and severe shortness of breath. Coarse crackles heard on right lower lung zone.');
-      setSymptomsFileName('symptoms_patient_8092.txt');
-      setLabReportText(`CLINICAL LABORATORY REPORT - METRO HEALTH
-SpO2 Oxygen Saturation: 89% (Low)
-Core Body Temp: 39.1 C (High Fever)
-Respiratory Rate: 28 /min
-WBC (Leukocytes): 16.8 k/uL (Elevated)
-CRP (C-Reactive Protein): 142.5 mg/L (Markedly High)
-FEV1/FVC Ratio: 78% (Normal)
-Procalcitonin: 2.8 ng/mL`);
-      setLabFileName('lab_report_complete_8092.pdf');
-      setXrayFileName('chest_xray_pa_8092.png');
-      setXrayPreview('/sample_pneumonia.png');
-    } else if (type === 'COPD') {
-      setPatientName('Arthur Pendelton');
-      setPatientAge(62);
-      setPatientGender('Male');
-      setSymptomsText('62-year-old male with 45 pack-year tobacco smoking history presenting with acute onset shortness of breath, chronic morning cough, and bilateral expiratory wheezing.');
-      setSymptomsFileName('symptoms_copd_patient.txt');
-      setLabReportText(`LABORATORY SPIROMETRY & BLOOD GAS REPORT
-SpO2 Oxygen Saturation: 88%
-Core Body Temp: 37.1 C
-Respiratory Rate: 26 /min
-WBC: 9.4 k/uL
-CRP: 14.8 mg/L
-Spirometry FEV1/FVC Ratio: 51% (Severe Airflow Obstruction)`);
-      setLabFileName('spirometry_lab_report.pdf');
-      setXrayFileName('chest_xray_copd.png');
-      setXrayPreview('/sample_copd.png');
-    } else if (type === 'TB') {
-      setPatientName('Amara Diallo');
-      setPatientAge(34);
-      setPatientGender('Female');
-      setSymptomsText('34-year-old female with 3 weeks of low-grade evening fever, drenching night sweats, 6kg weight loss, and persistent cough producing blood-streaked sputum.');
-      setSymptomsFileName('symptoms_tb_suspect.txt');
-      setLabReportText(`INFLAMMATORY PANEL & LAB REPORT
-SpO2: 96%
-Temp: 38.2 C
-WBC: 11.2 k/uL
-CRP: 68.4 mg/L
-FEV1/FVC Ratio: 82%`);
-      setLabFileName('lab_report_tb.pdf');
-      setXrayFileName('chest_xray_apical_cavity.png');
-      setXrayPreview('/sample_tb.png');
-    }
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!symptomsText && !labReportText && !xrayPreview) {
@@ -113,13 +61,21 @@ FEV1/FVC Ratio: 82%`);
       return;
     }
 
+    const ageNum = Number(patientAge);
+    if (patientAge && (isNaN(ageNum) || ageNum < 1 || ageNum > 120)) {
+      alert('Please enter a valid age between 1 and 120.');
+      return;
+    }
+
     const parsedLabs = parseUploadedLabReport(labReportText);
     const parsedSymptoms = parseSymptomsText(symptomsText);
 
     onRunFusion({
-      patientName,
-      patientAge,
-      patientGender,
+      patientId: currentDataset?.id,
+      patientMrn: currentDataset?.mrn,
+      patientName: patientName.trim() || currentDataset?.name || 'Registered Patient',
+      patientAge: !isNaN(ageNum) && ageNum > 0 ? ageNum : (currentDataset?.age || 35),
+      patientGender: patientGender || currentDataset?.gender || 'Female',
       symptomsText,
       symptomsFileName,
       parsedSymptoms,
@@ -144,32 +100,24 @@ FEV1/FVC Ratio: 82%`);
           <p style={{ fontSize: '0.82rem', color: '#64748b' }}>
             Upload raw patient files for 3 healthcare modalities to run joint AI feature fusion and generate diagnostic reports.
           </p>
-        </div>
-
-        {/* Quick Sample Loaders */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Quick Samples:</span>
-          <button onClick={() => loadPresetSample('Pneumonia')} type="button" className="preset-pill-btn" style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem' }}>
-            <Zap size={12} style={{ color: '#0284c7' }} /> Pneumonia
-          </button>
-          <button onClick={() => loadPresetSample('COPD')} type="button" className="preset-pill-btn" style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem' }}>
-            <Zap size={12} style={{ color: '#0d9488' }} /> COPD
-          </button>
-          <button onClick={() => loadPresetSample('TB')} type="button" className="preset-pill-btn" style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem' }}>
-            <Zap size={12} style={{ color: '#d97706' }} /> TB
-          </button>
+          {currentDataset && (
+            <div style={{ marginTop: '0.5rem', background: '#f0f9ff', border: '1px solid #7dd3fc', padding: '0.5rem 0.85rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0369a1', fontSize: '0.85rem', fontWeight: 600 }}>
+              <CheckCircle size={16} />
+              <span>Record linked to logged-in patient: <strong>{currentDataset.name}</strong></span>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Patient Demographics Bar */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '1rem', background: '#f8fafc', padding: '0.8rem 1rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
         <div>
-          <label style={{ fontSize: '0.72rem', color: '#475569', fontWeight: 600 }}>Patient Name / ID</label>
+          <label style={{ fontSize: '0.72rem', color: '#475569', fontWeight: 600 }}>Patient Name</label>
           <input
             type="text"
             value={patientName}
             onChange={(e) => setPatientName(e.target.value)}
-            placeholder="e.g. Eleanor Vance"
+            placeholder="e.g. Jane Doe"
             style={{ width: '100%', background: '#ffffff', border: '1px solid #cbd5e1', padding: '6px 10px', borderRadius: '6px', color: '#0f172a', fontSize: '0.88rem' }}
           />
         </div>

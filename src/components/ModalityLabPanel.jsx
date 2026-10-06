@@ -3,12 +3,15 @@ import { Activity, Thermometer, Heart, Wind, Gauge, AlertCircle, Cpu } from 'luc
 import { SYSTEM_MODELS } from '../data/clinicalData';
 
 export default function ModalityLabPanel({ labData, onChangeLab }) {
-  const [vitals, setVitals] = useState(labData.vitals);
-  const [panel, setPanel] = useState(labData.bloodPanel);
+  const defaultVitals = { spo2: 98, temp: 37.0, respRate: 16, heartRate: 72, bloodPressure: '120/80' };
+  const defaultPanel = { wbc: 6.5, crp: 2.5, procalcitonin: 0.1, paO2FiO2: 420, fev1Fvc: 82 };
+
+  const [vitals, setVitals] = useState(labData?.vitals || defaultVitals);
+  const [panel, setPanel] = useState(labData?.bloodPanel || defaultPanel);
 
   useEffect(() => {
-    setVitals(labData.vitals);
-    setPanel(labData.bloodPanel);
+    setVitals(labData?.vitals || defaultVitals);
+    setPanel(labData?.bloodPanel || defaultPanel);
   }, [labData]);
 
   const handleVitalChange = (key, value) => {
@@ -24,21 +27,23 @@ export default function ModalityLabPanel({ labData, onChangeLab }) {
   };
 
   const getVitalStatus = (key, val) => {
+    const num = parseFloat(val);
+    if (isNaN(num)) return { label: 'Pending Input', color: '#64748b' };
     if (key === 'spo2') {
-      if (val < 90) return { label: 'Severe Hypoxemia', color: 'var(--status-critical)' };
-      if (val < 94) return { label: 'Mild Hypoxemia', color: 'var(--status-warning)' };
-      return { label: 'Normal', color: 'var(--status-normal)' };
+      if (num < 90) return { label: 'Severe Hypoxemia', color: '#dc2626' };
+      if (num < 94) return { label: 'Mild Hypoxemia', color: '#d97706' };
+      return { label: 'Normal', color: '#059669' };
     }
     if (key === 'temp') {
-      if (val > 38.5) return { label: 'High Fever', color: 'var(--status-critical)' };
-      if (val > 37.5) return { label: 'Low Fever', color: 'var(--status-warning)' };
-      return { label: 'Normal', color: 'var(--status-normal)' };
+      if (num > 38.5) return { label: 'High Fever', color: '#dc2626' };
+      if (num > 37.5) return { label: 'Low Fever', color: '#d97706' };
+      return { label: 'Normal', color: '#059669' };
     }
     if (key === 'respRate') {
-      if (val > 24) return { label: 'Tachypnea', color: 'var(--status-critical)' };
-      return { label: 'Normal', color: 'var(--status-normal)' };
+      if (num > 24) return { label: 'Tachypnea', color: '#dc2626' };
+      return { label: 'Normal', color: '#059669' };
     }
-    return { label: 'Normal', color: 'var(--status-normal)' };
+    return { label: 'Normal', color: '#059669' };
   };
 
   return (

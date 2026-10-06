@@ -17,3 +17,7 @@ env/
 .idea/
 .DS_Store
 *.log
+*.safetensors
+*.bin
+*.pt
+*.onnx

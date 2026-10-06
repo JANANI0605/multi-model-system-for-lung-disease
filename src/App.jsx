@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import Navbar from './components/Navbar';
 import UploadWorkspace from './components/UploadWorkspace';
 import PatientSelector from './components/PatientSelector';
@@ -11,13 +12,11 @@ import DiagnosticResultsView from './components/DiagnosticResultsView';
 import PatientReportModal from './components/PatientReportModal';
 import PatientLoginScreen from './components/PatientLoginScreen';
 import { analyzeCustomPatientData } from './utils/fusionAnalyzer';
-import { PATIENT_PRESETS } from './data/clinicalData';
-import { ArrowLeft, Search, Layers, Sparkles } from 'lucide-react';
-import './styles/main.css';
+import { fetchPatientsFromDb, savePatientRecordToDb } from './utils/mlApi';
 
 export default function App() {
   const [customPatients, setCustomPatients] = useState([]);
-  const [activePatient, setActivePatient] = useState(PATIENT_PRESETS[0]);
+  const [activePatient, setActivePatient] = useState(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [viewMode, setViewMode] = useState('patient_portal'); // 'patient_portal' | 'xai_explain' | 'upload' | 'workstation'
 
@@ -29,23 +28,38 @@ export default function App() {
     return localStorage.getItem('pulse_fusion_role') || 'patient';
   });
 
-  // Restore logged-in patient from LocalStorage if available
+  // Fetch initial patient records from Database on mount
   useEffect(() => {
-    const savedPatientId = localStorage.getItem('pulse_fusion_patient_id');
-    if (savedPatientId) {
-      const all = [...customPatients, ...PATIENT_PRESETS];
-      const match = all.find(p => p.id === savedPatientId);
-      if (match) {
-        setActivePatient(match);
+    async function loadMongoPatients() {
+      const dbPatients = await fetchPatientsFromDb();
+      if (dbPatients && dbPatients.length > 0) {
+        setCustomPatients(dbPatients);
+        const savedPatientId = localStorage.getItem('pulse_fusion_patient_id');
+        if (savedPatientId) {
+          const match = dbPatients.find(p => p.id === savedPatientId || p.mrn === savedPatientId);
+          if (match) setActivePatient(match);
+          else setActivePatient(dbPatients[0]);
+        } else {
+          setActivePatient(dbPatients[0]);
+        }
+      } else {
+        setCustomPatients([]);
+        setActivePatient(null);
       }
     }
+    loadMongoPatients();
   }, []);
 
   const handlePatientLogin = (patient) => {
+    if (!patient) return;
     setActivePatient(patient);
     setIsAuthenticated(true);
     setUserRole('patient');
     setViewMode('patient_portal');
+    setCustomPatients(prev => {
+      const filtered = (prev || []).filter(p => p.id !== patient.id && p.mrn !== patient.mrn);
+      return [patient, ...filtered];
+    });
     localStorage.setItem('pulse_fusion_auth', 'true');
     localStorage.setItem('pulse_fusion_role', 'patient');
     localStorage.setItem('pulse_fusion_patient_id', patient.id);
@@ -55,93 +69,124 @@ export default function App() {
     setIsAuthenticated(true);
     setUserRole('clinician');
     setViewMode('workstation');
+    if (!activePatient && customPatients.length > 0) {
+      setActivePatient(customPatients[0]);
+    }
     localStorage.setItem('pulse_fusion_auth', 'true');
     localStorage.setItem('pulse_fusion_role', 'clinician');
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
+    setActivePatient(null);
     localStorage.removeItem('pulse_fusion_auth');
     localStorage.removeItem('pulse_fusion_role');
     localStorage.removeItem('pulse_fusion_patient_id');
   };
 
   const handleRegisterPatient = (newPatient) => {
-    setCustomPatients(prev => [newPatient, ...prev]);
+    setCustomPatients(prev => {
+      const filtered = (prev || []).filter(p => p.id !== newPatient.id && p.mrn !== newPatient.mrn);
+      return [newPatient, ...filtered];
+    });
   };
 
   const handleRunFusionFromUpload = (uploadPackage) => {
+    const targetPatient = activePatient || {};
     const analyzedPatient = analyzeCustomPatientData({
       demographics: {
-        name: uploadPackage.patientName || activePatient.name,
-        age: uploadPackage.patientAge || activePatient.age,
-        gender: uploadPackage.patientGender || activePatient.gender,
-        mrn: activePatient.mrn || `MRN-2026-${Math.floor(1000 + Math.random() * 9000)}`
+        id: targetPatient.id || `PAT-${Math.floor(1000 + Math.random() * 9000)}`,
+        name: uploadPackage.patientName || targetPatient.name || 'Registered Patient',
+        age: uploadPackage.patientAge || targetPatient.age || 35,
+        gender: uploadPackage.patientGender || targetPatient.gender || 'Female',
+        mrn: targetPatient.mrn || `MRN-2026-${Math.floor(1000 + Math.random() * 9000)}`
       },
       textData: {
-        chiefComplaint: uploadPackage.symptomsText.slice(0, 120) || activePatient.textData.chiefComplaint,
-        clinicalNotes: uploadPackage.symptomsText || activePatient.textData.clinicalNotes
+        chiefComplaint: uploadPackage.symptomsText ? uploadPackage.symptomsText.slice(0, 120) : targetPatient.textData?.chiefComplaint || 'Uploaded medical record',
+        clinicalNotes: uploadPackage.symptomsText || targetPatient.textData?.clinicalNotes || 'Uploaded medical record'
       },
       labData: {
         vitals: {
-          spo2: uploadPackage.parsedLabs.spo2 || activePatient.labData.vitals.spo2,
-          temp: uploadPackage.parsedLabs.temp || activePatient.labData.vitals.temp,
-          respRate: uploadPackage.parsedLabs.respRate || activePatient.labData.vitals.respRate,
+          spo2: uploadPackage.parsedLabs?.spo2 || targetPatient.labData?.vitals?.spo2 || 98,
+          temp: uploadPackage.parsedLabs?.temp || targetPatient.labData?.vitals?.temp || 37.0,
+          respRate: uploadPackage.parsedLabs?.respRate || targetPatient.labData?.vitals?.respRate || 16,
           heartRate: 98,
           bloodPressure: '132/86'
         },
         bloodPanel: {
-          wbc: uploadPackage.parsedLabs.wbc || activePatient.labData.bloodPanel.wbc,
-          crp: uploadPackage.parsedLabs.crp || activePatient.labData.bloodPanel.crp,
-          procalcitonin: uploadPackage.parsedLabs.procalcitonin || activePatient.labData.bloodPanel.procalcitonin,
+          wbc: uploadPackage.parsedLabs?.wbc || targetPatient.labData?.bloodPanel?.wbc || 6.5,
+          crp: uploadPackage.parsedLabs?.crp || targetPatient.labData?.bloodPanel?.crp || 2.5,
+          procalcitonin: uploadPackage.parsedLabs?.procalcitonin || targetPatient.labData?.bloodPanel?.procalcitonin || 0.1,
           paO2FiO2: 260,
-          fev1Fvc: uploadPackage.parsedLabs.fev1Fvc || activePatient.labData.bloodPanel.fev1Fvc
+          fev1Fvc: uploadPackage.parsedLabs?.fev1Fvc || targetPatient.labData?.bloodPanel?.fev1Fvc || 82
         }
       },
-      xrayImage: uploadPackage.xrayPreview || activePatient.xrayData.customImageSrc,
-      xrayFileName: uploadPackage.xrayFileName || activePatient.xrayData.imageType
+      xrayImage: uploadPackage.xrayPreview || targetPatient.xrayData?.customImageSrc,
+      xrayFileName: uploadPackage.xrayFileName || targetPatient.xrayData?.imageType
     });
 
+    savePatientRecordToDb(analyzedPatient);
     setActivePatient(analyzedPatient);
     setCustomPatients(prev => {
-      const filtered = prev.filter(p => p.id !== analyzedPatient.id);
+      const filtered = (prev || []).filter(p => p.id !== analyzedPatient.id && p.mrn !== analyzedPatient.mrn);
       return [analyzedPatient, ...filtered];
     });
     setViewMode('patient_portal');
   };
 
   const handleSelectPatient = (patient) => {
-    setActivePatient(JSON.parse(JSON.stringify(patient)));
+    if (patient) setActivePatient(JSON.parse(JSON.stringify(patient)));
   };
 
   const handleChangeText = (newNotes) => {
     setActivePatient(prev => {
-      const updated = { ...prev };
-      updated.textData.clinicalNotes = newNotes;
+      if (!prev) return null;
+      const updated = analyzeCustomPatientData({
+        demographics: { id: prev.id, name: prev.name, age: prev.age, gender: prev.gender, mrn: prev.mrn },
+        textData: { chiefComplaint: prev.textData?.chiefComplaint || newNotes.slice(0, 100), clinicalNotes: newNotes },
+        labData: prev.labData || {},
+        xrayImage: prev.xrayData?.customImageSrc,
+        xrayFileName: prev.xrayData?.imageType
+      });
+      savePatientRecordToDb(updated);
       return updated;
     });
   };
 
   const handleChangeLab = (newLab) => {
     setActivePatient(prev => {
-      const updated = { ...prev };
-      updated.labData = newLab;
-      if (newLab.vitals.spo2 < 85 || newLab.bloodPanel.crp > 100) {
-        updated.fusionResults.diseasePredictions[0].probability = Math.min(99.2, updated.fusionResults.diseasePredictions[0].probability + 3.5);
-      }
+      if (!prev) return null;
+      const updated = analyzeCustomPatientData({
+        demographics: { id: prev.id, name: prev.name, age: prev.age, gender: prev.gender, mrn: prev.mrn },
+        textData: prev.textData || {},
+        labData: newLab,
+        xrayImage: prev.xrayData?.customImageSrc,
+        xrayFileName: prev.xrayData?.imageType
+      });
+      savePatientRecordToDb(updated);
       return updated;
     });
   };
 
   const handleUpdateXray = (newXray) => {
-    setActivePatient(prev => ({
-      ...prev,
-      xrayData: { ...prev.xrayData, ...newXray }
-    }));
+    setActivePatient(prev => {
+      if (!prev) return null;
+      const updatedXraySrc = newXray?.customImageSrc || prev.xrayData?.customImageSrc;
+      const updatedXrayType = newXray?.imageType || prev.xrayData?.imageType;
+      const updated = analyzeCustomPatientData({
+        demographics: { id: prev.id, name: prev.name, age: prev.age, gender: prev.gender, mrn: prev.mrn },
+        textData: prev.textData || {},
+        labData: prev.labData || {},
+        xrayImage: updatedXraySrc,
+        xrayFileName: updatedXrayType
+      });
+      savePatientRecordToDb(updated);
+      return updated;
+    });
   };
 
-  // IF NOT AUTHENTICATED: RENDER PATIENT LOGIN SCREEN
-  if (!isAuthenticated) {
+  // IF NOT AUTHENTICATED OR NO ACTIVE PATIENT: RENDER PATIENT LOGIN SCREEN
+  if (!isAuthenticated || !activePatient) {
     return (
       <PatientLoginScreen 
         onPatientLogin={handlePatientLogin}
@@ -190,7 +235,7 @@ export default function App() {
               </button>
 
               <span style={{ fontSize: '0.85rem', color: '#0284c7', fontWeight: 700 }}>
-                Patient: {activePatient.name} ({activePatient.mrn})
+                Patient: {activePatient.name}
               </span>
             </div>
 

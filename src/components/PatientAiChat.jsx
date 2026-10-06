@@ -5,7 +5,7 @@ export default function PatientAiChat({ patient }) {
   const [messages, setMessages] = useState([
     {
       sender: 'ai',
-      text: `Hello ${patient.name}! I am your PulseFusion Personal AI Health Assistant. I have analyzed your medical data (Lab results, Chest X-ray scan, and Clinical notes). How can I help explain your health summary today?`
+      text: `Hello ${patient?.name || 'Patient'}! I am your Personal AI Health Assistant. I have analyzed your medical data (Lab results, Chest X-ray scan, and Clinical notes). How can I help explain your health summary today?`
     }
   ]);
   const [inputQuery, setInputQuery] = useState('');
@@ -13,19 +13,25 @@ export default function PatientAiChat({ patient }) {
   // Contextual Q&A Generator based on patient's own data
   const generateResponse = (query) => {
     const q = query.toLowerCase();
-    const condition = patient.primaryCondition;
-    const topPred = patient.fusionResults.diseasePredictions[0];
+    const condition = patient?.primaryCondition || 'Baseline Respiratory Assessment';
+    const topPred = patient?.fusionResults?.diseasePredictions?.[0] || { probability: 95 };
 
     if (q.includes('spo2') || q.includes('oxygen') || q.includes('lab') || q.includes('test')) {
-      return `Your SpO2 oxygen saturation level is currently ${patient.labData.vitals.spo2}% (Normal reference range is 95-100%). Your body temperature is ${patient.labData.vitals.temp}°C and CRP (inflammatory marker) is ${patient.labData.bloodPanel.crp} mg/L. These biomarkers contribute to your overall diagnostic assessment for ${condition}.`;
+      const spo2 = patient?.labData?.vitals?.spo2 || 98;
+      const temp = patient?.labData?.vitals?.temp || 37.0;
+      const crp = patient?.labData?.bloodPanel?.crp || 2.5;
+      return `Your SpO2 oxygen saturation level is currently ${spo2}% (Normal reference range is 95-100%). Your body temperature is ${temp}°C and CRP (inflammatory marker) is ${crp} mg/L. These biomarkers contribute to your overall diagnostic assessment for ${condition}.`;
     } 
     
     if (q.includes('xray') || q.includes('x-ray') || q.includes('scan') || q.includes('chest')) {
-      return `Your Chest X-ray radiograph shows: "${patient.xrayData.description}". Primary key findings detected include: ${patient.xrayData.findingTags.join(', ')}.`;
+      const desc = patient?.xrayData?.description || 'Standard thoracic radiograph scan.';
+      const tags = patient?.xrayData?.findingTags?.join(', ') || 'No abnormal tags.';
+      return `Your Chest X-ray radiograph shows: "${desc}". Primary key findings detected include: ${tags}.`;
     }
 
     if (q.includes('diagnosis') || q.includes('condition') || q.includes('disease') || q.includes('what do i have')) {
-      return `Based on joint multimodal AI fusion of your symptoms, lab markers, and X-ray vision, your primary finding is "${condition}" with an AI confidence of ${topPred.probability.toFixed(1)}% (${patient.severity} Risk Status).`;
+      const prob = topPred.probability ? topPred.probability.toFixed(1) : '95.0';
+      return `Based on joint multimodal AI fusion of your symptoms, lab markers, and X-ray vision, your primary finding is "${condition}" with an AI confidence of ${prob}% (${patient?.severity || 'Normal'} Risk Status).`;
     }
 
     if (q.includes('treatment') || q.includes('cure') || q.includes('do next') || q.includes('recommend') || q.includes('medication')) {
@@ -42,7 +48,8 @@ export default function PatientAiChat({ patient }) {
       }
     }
 
-    return `For ${patient.name} (MRN: ${patient.mrn}), your current primary condition is assessed as ${condition} (${topPred.probability.toFixed(1)}% joint confidence). Always discuss detailed medical choices with your licensed healthcare team.`;
+    const probText = topPred.probability ? topPred.probability.toFixed(1) : '95.0';
+    return `For ${patient?.name || 'Patient'}, your current primary condition is assessed as ${condition} (${probText}% joint confidence). Always discuss detailed medical choices with your licensed healthcare team.`;
   };
 
   const handleSendMessage = (e) => {
@@ -76,17 +83,17 @@ export default function PatientAiChat({ patient }) {
             <Bot size={20} />
           </div>
           <div>
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#fff' }}>
-              AI Health Assistant — Personalized for {patient.name}
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+              AI Health Assistant — Personalized for {patient?.name || 'Patient'}
             </h3>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-              Bound to MRN: {patient.mrn} | Private AI Medical Consultation
-            </span>
+            <p style={{ fontSize: '0.78rem', color: '#64748b', margin: '2px 0 0 0' }}>
+              Personalized AI Health Record Assistant | Private AI Consultation
+            </p>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(6, 182, 212, 0.15)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(56, 189, 248, 0.3)', fontSize: '0.72rem', color: 'var(--primary-cyan)' }}>
-          <Shield size={13} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: '#e0f2fe', padding: '5px 12px', borderRadius: '10px', border: '1px solid #7dd3fc', fontSize: '0.78rem', color: '#0072ce', fontWeight: 700 }}>
+          <Shield size={14} />
           <span>Patient-Specific Context Active</span>
         </div>
       </div>
@@ -120,12 +127,12 @@ export default function PatientAiChat({ patient }) {
       <form onSubmit={handleSendMessage} className="chat-input-form">
         <input 
           type="text" 
-          placeholder={`Ask about ${patient.name}'s diagnosis, lab test values, or treatment...`}
+          placeholder={`Ask about ${patient?.name || 'patient'}'s diagnosis, lab values, or treatment...`}
           value={inputQuery}
           onChange={(e) => setInputQuery(e.target.value)}
           className="chat-input"
         />
-        <button type="submit" className="btn-primary" style={{ padding: '0.6rem 1rem', borderRadius: '10px' }}>
+        <button type="submit" className="btn-primary" style={{ padding: '0.75rem 1.35rem', borderRadius: '12px' }}>
           <Send size={16} /> Send
         </button>
       </form>

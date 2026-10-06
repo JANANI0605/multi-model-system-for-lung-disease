@@ -59,6 +59,12 @@ export default function UploadPatientModal({ onClose, onSubmitPatient }) {
   // Submit and start Dynamic AI Fusion Pipeline
   const handleSubmit = (e) => {
     e.preventDefault();
+    const ageNum = Number(age);
+    if (isNaN(ageNum) || ageNum < 1 || ageNum > 120) {
+      alert('Please enter a valid age between 1 and 120.');
+      return;
+    }
+
     setStep(2); // Show AI Processing Animation
 
     // Step 1: Text NLP
@@ -124,10 +130,10 @@ export default function UploadPatientModal({ onClose, onSubmitPatient }) {
             {/* 1. Demographics */}
             <div style={{ background: 'rgba(9, 13, 24, 0.6)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
               <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--primary-cyan)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <User size={14} /> 1. Patient Demographics & ID:
+                <User size={14} /> 1. Patient Demographics:
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1.5fr', gap: '0.75rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '0.75rem' }}>
                 <div>
                   <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Full Name</label>
                   <input
@@ -160,16 +166,6 @@ export default function UploadPatientModal({ onClose, onSubmitPatient }) {
                     <option value="Female">Female</option>
                     <option value="Other">Other</option>
                   </select>
-                </div>
-                <div>
-                  <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>MRN Number</label>
-                  <input
-                    type="text"
-                    value={mrn}
-                    onChange={(e) => setMrn(e.target.value)}
-                    style={{ width: '100%', background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.12)', padding: '8px', borderRadius: '6px', color: 'var(--primary-cyan)', fontSize: '0.85rem' }}
-                    className="mono"
-                  />
                 </div>
               </div>
             </div>
@@ -284,21 +280,21 @@ export default function UploadPatientModal({ onClose, onSubmitPatient }) {
             {/* Multi-step progress list */}
             <div style={{ maxWidth: '420px', width: '100%', display: 'flex', flexDirection: 'column', gap: '0.75rem', textAlign: 'left' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', opacity: analysisStage >= 1 ? 1 : 0.4 }}>
-                <CheckCircle2 size={18} style={{ color: analysisStage >= 1 ? '#c084fc' : 'var(--text-dim)' }} />
-                <span style={{ fontSize: '0.88rem' }}>1. Tokenizing Clinical Text (BioBERT NLP)</span>
+                <CheckCircle2 size={18} style={{ color: analysisStage >= 1 ? '#0072ce' : 'var(--text-dim)' }} />
+                <span style={{ fontSize: '0.88rem' }}>1. Analyzing Clinical Symptom Notes</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', opacity: analysisStage >= 2 ? 1 : 0.4 }}>
-                <CheckCircle2 size={18} style={{ color: analysisStage >= 2 ? '#38bdf8' : 'var(--text-dim)' }} />
-                <span style={{ fontSize: '0.88rem' }}>2. Standardizing Lab & Vital Biomarkers (TabTransformer)</span>
+                <CheckCircle2 size={18} style={{ color: analysisStage >= 2 ? '#0284c7' : 'var(--text-dim)' }} />
+                <span style={{ fontSize: '0.88rem' }}>2. Standardizing Laboratory Biomarkers</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', opacity: analysisStage >= 3 ? 1 : 0.4 }}>
-                <CheckCircle2 size={18} style={{ color: analysisStage >= 3 ? '#60a5fa' : 'var(--text-dim)' }} />
-                <span style={{ fontSize: '0.88rem' }}>3. Mapping Spatial Radiograph Lesions (Swin Vision)</span>
+                <CheckCircle2 size={18} style={{ color: analysisStage >= 3 ? '#0d9488' : 'var(--text-dim)' }} />
+                <span style={{ fontSize: '0.88rem' }}>3. Evaluating Chest Radiograph Imaging</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', opacity: analysisStage >= 4 ? 1 : 0.4 }}>
                 <CheckCircle2 size={18} style={{ color: analysisStage >= 4 ? 'var(--status-normal)' : 'var(--text-dim)' }} />
                 <strong style={{ fontSize: '0.88rem', color: analysisStage >= 4 ? 'var(--status-normal)' : '#fff' }}>
-                  4. Cross-Attention Unified Joint Latent Fusion Complete!
+                  4. Integrated Diagnostic Assessment Complete!
                 </strong>
               </div>
             </div>

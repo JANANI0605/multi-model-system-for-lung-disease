@@ -3,13 +3,13 @@ import { FileText, Sparkles, Tag, CheckCircle2, Bot } from 'lucide-react';
 import { SYSTEM_MODELS } from '../data/clinicalData';
 
 export default function ModalityTextPanel({ textData, onChangeText }) {
-  const [notes, setNotes] = useState(textData.clinicalNotes);
-  const [extracted, setExtracted] = useState(textData.extractedEntities);
+  const [notes, setNotes] = useState(textData?.clinicalNotes || '');
+  const [extracted, setExtracted] = useState(textData?.extractedEntities || []);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   useEffect(() => {
-    setNotes(textData.clinicalNotes);
-    setExtracted(textData.extractedEntities);
+    setNotes(textData?.clinicalNotes || '');
+    setExtracted(textData?.extractedEntities || []);
   }, [textData]);
 
   const handleNotesChange = (e) => {
@@ -38,14 +38,14 @@ export default function ModalityTextPanel({ textData, onChangeText }) {
           </div>
         </div>
         <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '4px', background: '#f0fdf4', color: '#059669', border: '1px solid #a7f3d0' }} className="mono">
-          [1 x 768 Vector]
+          [Vector Analysis Active]
         </span>
       </div>
 
       {/* Chief Complaint Brief */}
       <div style={{ background: '#f8fafc', padding: '0.6rem 0.8rem', borderRadius: '8px', borderLeft: '3px solid #0d9488', border: '1px solid #e2e8f0' }}>
         <div style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>CHIEF COMPLAINT</div>
-        <p style={{ fontSize: '0.85rem', fontWeight: 600, color: '#0f172a' }}>"{textData.chiefComplaint}"</p>
+        <p style={{ fontSize: '0.85rem', fontWeight: 600, color: '#0f172a' }}>"{textData?.chiefComplaint || 'Self-reported symptoms'}"</p>
       </div>
 
       {/* Editable Clinical Observations Area */}
@@ -57,7 +57,7 @@ export default function ModalityTextPanel({ textData, onChangeText }) {
             style={{ background: 'none', border: 'none', color: '#0284c7', fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem', fontWeight: 600 }}
           >
             <Sparkles size={12} />
-            {isAnalyzing ? 'Extracting Entities...' : 'Run BioBERT NLP'}
+            {isAnalyzing ? 'Extracting Symptoms...' : 'Analyze Symptoms'}
           </button>
         </div>
         <textarea
@@ -68,29 +68,29 @@ export default function ModalityTextPanel({ textData, onChangeText }) {
         />
       </div>
 
-      {/* BioBERT Extracted Entities */}
+      {/* Extracted Clinical Entities */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem' }}>
           <Tag size={14} style={{ color: '#0284c7' }} />
-          <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>BioBERT Extracted Clinical Tokens:</span>
+          <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>Extracted Clinical Symptoms:</span>
         </div>
 
         <div className="entities-wrap">
-          {extracted.map((ent, idx) => (
-            <span key={idx} className={`entity-chip chip-${ent.severity}`}>
+          {(extracted || []).map((ent, idx) => (
+            <span key={idx} className={`entity-chip chip-${ent.severity || 'medium'}`}>
               <CheckCircle2 size={10} />
-              <strong>{ent.category}:</strong> {ent.text}
+              <strong>{ent.category || 'Symptom'}:</strong> {ent.text || ent.symptom}
             </span>
           ))}
         </div>
       </div>
 
-      {/* NLP Model Status Bar */}
+      {/* Model Status Bar */}
       <div style={{ marginTop: 'auto', paddingTop: '0.6rem', borderTop: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.72rem', color: '#64748b' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-          <Bot size={12} /> Model: {SYSTEM_MODELS.textModel.name}
+          <Bot size={12} /> Clinical Engine Active
         </span>
-        <span className="mono" style={{ color: '#0284c7', fontWeight: 600 }}>Latent Token Embedding Active</span>
+        <span style={{ color: '#0284c7', fontWeight: 600 }}>Clinical Text Analysis Active</span>
       </div>
     </div>
   );
